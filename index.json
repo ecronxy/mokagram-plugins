@@ -1,6 +1,66 @@
 {
   "plugins": [
     {
+      "id": "forwards",
+      "name": "Пересылки",
+      "description": "Точное число пересылок (и, если включить, просмотров) в подвале сообщений канала",
+      "author": "mokagram",
+      "version": "1.0.0",
+      "icon": "➡️",
+      "permissions": [
+        "messages.read",
+        "settings"
+      ],
+      "file": "forwards.plugin",
+      "sha256": "8ae8aefd3e2bdc47d897febfb8e68bf351f456d291b418b00e9a1581b8dd4a80",
+      "size": 1139
+    },
+    {
+      "id": "mass_edit",
+      "name": "Массовая правка",
+      "description": "Выделите несколько своих сообщений, нажмите правой кнопкой и выберите «Изменить выделенные»: у всех будет один новый текст. Команда .massundo вернёт прошлые тексты",
+      "author": "mokagram",
+      "version": "1.0.0",
+      "icon": "✏️",
+      "permissions": [
+        "messages.read",
+        "messages.edit",
+        "ui"
+      ],
+      "file": "mass_edit.plugin",
+      "sha256": "419a7809ccf0beb915dcba313d9ea9cef90e9b134e4f399aa0f76d0364f3c79c",
+      "size": 3696
+    },
+    {
+      "id": "mention_avatars",
+      "name": "Аватарки в упоминаниях",
+      "description": "Рядом с @упоминанием в сообщении появляется маленькая аватарка этого человека. Видно только у вас",
+      "author": "mokagram",
+      "version": "1.0.0",
+      "icon": "👤",
+      "permissions": [
+        "messages.read"
+      ],
+      "file": "mention_avatars.plugin",
+      "sha256": "3b47470cdb5fbd36498eb7d12fda219d40269e6a9f08553b71d14241bab45024",
+      "size": 1815
+    },
+    {
+      "id": "notification_center",
+      "name": "Центр уведомлений",
+      "description": "Копит ответы на ваши сообщения и упоминания вас, чтобы ничего не потерялось в шумных чатах. Откройте через боковое меню или команду .nc. Записи старше трёх дней уходят в архив",
+      "author": "mokagram",
+      "version": "1.0.0",
+      "icon": "🔔",
+      "permissions": [
+        "messages.read",
+        "ui"
+      ],
+      "file": "notification_center.plugin",
+      "sha256": "7ee240a1aac3e92314fc99fd79637893535ce8080dd6bdeb5948c1a6f4431b51",
+      "size": 5266
+    },
+    {
       "id": "quick_phrases",
       "name": "Быстрые фразы",
       "description": "Пишешь ;shrug, ;lenny или ;tableflip в конце текста, и он заменится на смайл из символов",
@@ -29,6 +89,22 @@
       "size": 1145
     },
     {
+      "id": "search_by_id",
+      "name": "Поиск по ID",
+      "description": "Находит человека или чат по ID, номеру телефона, @username или ссылке t.me. Пункт «Найти по ID» в боковом меню и команда .find",
+      "author": "mokagram",
+      "version": "1.0.0",
+      "icon": "#️⃣",
+      "permissions": [
+        "tl.read",
+        "messages.read",
+        "ui"
+      ],
+      "file": "search_by_id.plugin",
+      "sha256": "2e17c42d0d821a92978c06d851f1805ec70d67fe5565391e7d5ec35ca0bada05",
+      "size": 4729
+    },
+    {
       "id": "text_tools",
       "name": "Текстовые команды",
       "description": ".up .low .rev .mock: пишешь команду и текст, уходит уже преобразованное",
@@ -41,6 +117,23 @@
       "file": "text_tools.plugin",
       "sha256": "f7fd2a1236fe60c269d2f507e098ee9473535a301ad3159b7ba6e7f0ffdae0c5",
       "size": 1013
+    },
+    {
+      "id": "time_in_name",
+      "name": "Время в имени",
+      "description": "Добавляет к вашему имени или фамилии текущее время: «Иван 🕓 14:35». Выключите переключатель, и имя вернётся",
+      "author": "mokagram",
+      "version": "1.0.0",
+      "icon": "🕓",
+      "permissions": [
+        "profile.write",
+        "tl.read",
+        "background",
+        "settings"
+      ],
+      "file": "time_in_name.plugin",
+      "sha256": "e4c429bdd7ae8a3d9ed3e9d249c262e5c140f7d31bded78a74a94f479b1a236f",
+      "size": 4783
     }
   ]
 }

@@ -1,0 +1,43 @@
+__id__ = "mention_avatars"
+__name__ = "Аватарки в упоминаниях"
+__description__ = "Рядом с @упоминанием в сообщении появляется маленькая аватарка этого человека. Видно только у вас"
+__author__ = "mokagram"
+__version__ = "1.0.0"
+__icon__ = "👤"
+__min_version__ = "0.1.0"
+__permissions__ = ["messages.read"]
+
+from base_plugin import BasePlugin
+
+# Пробел-заглушка: если аватарку нарисовать не удалось, он незаметен
+SLOT = "\u200b"
+
+
+class MentionAvatars(BasePlugin):
+    def message_text_hook(self, message):
+        text = message.get('text') or ''
+        entities = message.get('entities') or []
+        marks = [e for e in entities if e.get('type') in ('mention', 'mention_name') and e.get('user_id')]
+        if not marks:
+            return None
+        marks.sort(key=lambda e: e['offset'])
+        out, shifted, last = [], [], 0
+        for e in marks:
+            if e['offset'] < last:
+                continue
+            out.append(text[last:e['offset']])
+            out.append(SLOT)
+            last = e['offset']
+            shifted.append((e['offset'], e['user_id']))
+        out.append(text[last:])
+        new_text = ''.join(out)
+        result = []
+        for e in entities:
+            e = dict(e)
+            start, end = e['offset'], e['offset'] + e['length']
+            e['length'] += sum(1 for pos, _ in shifted if start < pos < end)
+            e['offset'] += sum(1 for pos, _ in shifted if pos <= start)
+            result.append(e)
+        for n, (pos, uid) in enumerate(shifted):
+            result.append({'type': 'userpic', 'offset': pos + n, 'length': 1, 'user_id': uid})
+        return {'text': new_text, 'entities': result}

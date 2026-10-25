@@ -1,0 +1,108 @@
+__id__ = "notification_center"
+__name__ = "Центр уведомлений"
+__description__ = "Копит ответы на ваши сообщения и упоминания вас, чтобы ничего не потерялось в шумных чатах. Откройте через боковое меню или команду .nc. Записи старше трёх дней уходят в архив"
+__author__ = "mokagram"
+__version__ = "1.0.0"
+__icon__ = "🔔"
+__min_version__ = "0.1.0"
+__permissions__ = ["messages.read", "ui"]
+
+import time
+
+from base_plugin import BasePlugin, MenuItemData, MenuItemType, Selector, command
+from mokagram_sdk import api
+
+KEEP = 300                   # сколько записей хранить
+ARCHIVE_AFTER = 3 * 86400    # старше трёх дней: архив
+KINDS = {'reply': 'ответ вам', 'mention': 'упомянул вас'}
+
+
+def clip(text, n=70):
+    text = ' '.join((text or '').split())
+    return text if len(text) <= n else text[:n - 1] + '…'
+
+
+class NotificationCenter(BasePlugin):
+    def on_plugin_load(self):
+        self.me = api.get_me() or {}
+        self.add_menu_item(MenuItemData(menu_type=MenuItemType.DRAWER_MENU, text="Центр уведомлений",
+                                        icon="notifications", on_click=lambda c: self.show()))
+
+    @command("nc", "центр уведомлений: .nc открыть, .nc clear очистить всё")
+    def open_cmd(self, ctx):
+        if (ctx.args or '').strip() == 'clear':
+            api.db.set('items', [])
+            api.show_toast('Центр уведомлений очищен')
+            return ''
+        self.show()
+        return ''
+
+    # ---- сбор ----
+    def on_new_message(self, m):
+        if m.get('out'):
+            return
+        if not self.me:
+            self.me = api.get_me() or {}
+        kind = self.kind_of(m)
+        if kind:
+            self.add(m, kind)
+
+    def kind_of(self, m):
+        text = m.get('text') or ''
+        name = (self.me.get('username') or '').lower()
+        my_id = str(self.me.get('peer') or '')
+        for e in m.get('entities') or []:
+            if e.get('type') == 'mention' and name:
+                part = text[e['offset']:e['offset'] + e['length']].lstrip('@').lower()
+                if part == name:
+                    return 'mention'
+            if e.get('type') == 'mention_name' and my_id.endswith(str(e.get('user_id'))):
+                return 'mention'
+        reply = str(m.get('reply_to') or '0')
+        if reply != '0':
+            src = api.get_message(m['peer'], reply)
+            if src and src.get('out'):
+                return 'reply'
+        return None
+
+    def add(self, m, kind):
+        items = api.db.get('items', [])
+        items.insert(0, {'peer': m['peer'], 'chat': m.get('peer_title') or '', 'id': m['id'], 'from': m.get('from'),
+                         'text': clip(m.get('text') or '[медиа]', 200), 'date': m.get('date') or int(time.time()),
+                         'kind': kind})
+        api.db.set('items', items[:KEEP])
+
+    # ---- окно ----
+    def show(self, archive=False, picked=0):
+        items = api.db.get('items', [])
+        edge = time.time() - ARCHIVE_AFTER
+        shown = [i for i in items if (i['date'] < edge) == archive]
+        lines = ['%s: %s, %s' % (i['chat'] or 'чат', KINDS.get(i['kind'], ''), clip(i['text'], 60)) for i in shown[:40]]
+        fields = []
+        if lines:
+            fields.append({'type': 'select', 'key': 'pick', 'text': 'Уведомление', 'items': lines, 'default': min(picked, len(lines) - 1)})
+            message = '%d %s' % (len(shown), 'в архиве' if archive else 'новых')
+        else:
+            message = 'Архив пуст' if archive else 'Пока ничего: сюда попадают ответы вам и упоминания'
+        api.show_dialog("Центр уведомлений: архив" if archive else "Центр уведомлений", message, fields,
+                        [{'id': 'open', 'text': 'Открыть'},
+                         {'id': 'clear', 'text': 'Очистить', 'style': 'red'} if archive
+                         else {'id': 'del', 'text': 'Удалить', 'style': 'red'},
+                         {'id': 'tab', 'text': 'Новые' if archive else 'Архив', 'style': 'cancel'}],
+                        lambda btn, v: self.on_result(btn, v, shown, archive))
+
+    def on_result(self, btn, values, shown, archive):
+        values = values or {}
+        if btn == 'tab':
+            return self.show(not archive)
+        pick = int(values.get('pick', 0) or 0)
+        item = shown[pick] if 0 <= pick < len(shown) else None
+        if btn == 'open' and item:
+            api.open_chat(item['peer'], item['id'])
+        elif btn == 'del' and item:
+            api.db.set('items', [i for i in api.db.get('items', []) if i is not item and not (i['peer'] == item['peer'] and i['id'] == item['id'])])
+            self.show(archive, pick)
+        elif btn == 'clear':
+            gone = {(i['peer'], i['id']) for i in shown}
+            api.db.set('items', [i for i in api.db.get('items', []) if (i['peer'], i['id']) not in gone])
+            self.show(archive)

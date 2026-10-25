@@ -4,6 +4,8 @@
 set -euo pipefail
 key=${MOKAGRAM_UPDATE_KEY:-$HOME/.config/mokagram/update-key.pem}
 [[ -f "$key" ]] || { echo "Нет ключа $key" >&2; exit 1; }
+# Модерация: плагин с зашифрованной вставкой, exec/eval или загрузкой кода в каталог не попадает.
+python3 lint.py plugins/*.plugin || { echo "Проверка не пройдена, каталог не подписан" >&2; exit 1; }
 python3 - <<'PY' > index.json
 import glob, hashlib, json, os, re
 out = []

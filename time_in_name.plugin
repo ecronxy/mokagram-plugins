@@ -1,0 +1,115 @@
+__id__ = "time_in_name"
+__name__ = "Время в имени"
+__description__ = "Добавляет к вашему имени или фамилии текущее время: «Иван 🕓 14:35». Выключите переключатель, и имя вернётся"
+__author__ = "mokagram"
+__version__ = "1.0.0"
+__icon__ = "🕓"
+__min_version__ = "0.1.0"
+__permissions__ = ["profile.write", "tl.read", "background", "settings"]
+
+import time
+
+from base_plugin import AppEvent, BasePlugin, Divider, Header, Input, Selector, Switch
+from mokagram_sdk import api
+
+STEPS = [1, 5, 10, 15, 30, 60]
+
+
+class TimeInName(BasePlugin):
+    def create_settings(self):
+        return [
+            Header("Время в имени"),
+            Switch(key="enabled", text="Включить", default=False,
+                   subtext="Меняет имя в вашем профиле, его увидят все"),
+            Selector(key="where", text="Куда добавлять", items=["В фамилию", "В имя"], default=0),
+            Input(key="format", text="Вид времени", default="🕓 %H:%M",
+                  subtext="%H часы, %M минуты, %d число, %m месяц"),
+            Input(key="offset", text="Часовой пояс", default="",
+                  subtext="Пусто: как в системе. Или сдвиг от UTC, например 3 или -5"),
+            Selector(key="step", text="Как часто обновлять (мин)", items=[str(s) for s in STEPS], default=1,
+                     ),
+            Divider("Не ставьте 1 минуту надолго: Telegram может ограничить частую смену имени"),
+        ]
+
+    def on_plugin_load(self):
+        self._quit = False
+        self._last = ''
+        self.sync()
+        api.cron('* * * * *', self.tick, name='tick')
+
+    def on_app_event(self, event):
+        if event == AppEvent.STOP:
+            self._quit = True
+
+    def on_plugin_unload(self):
+        # при выходе из клиента время остаётся, вернуть имя надо только когда плагин выключили или удалили
+        if not getattr(self, '_quit', False):
+            self.restore()
+
+    def on_settings_changed(self, key, value):
+        if key == 'enabled' and not value:
+            self.restore()
+        else:
+            self._last = ''
+            self.sync()
+
+    def enabled(self):
+        return bool(api.get_setting('enabled', False))
+
+    def stamp(self):
+        fmt = api.get_setting('format', '🕓 %H:%M') or '🕓 %H:%M'
+        raw = str(api.get_setting('offset', '') or '').strip().replace(',', '.')
+        try:
+            if raw:
+                return time.strftime(fmt, time.gmtime(time.time() + float(raw) * 3600))[:30]
+        except ValueError:
+            pass
+        return time.strftime(fmt, time.localtime())[:30]
+
+    def tick(self):
+        if not self.enabled():
+            return
+        step = STEPS[min(int(api.get_setting('step', 1) or 0), len(STEPS) - 1)]
+        # пока ни разу не вышло (клиент ещё подключался), пробуем каждую минуту
+        if self._last and int(time.time() // 60) % step != 0:
+            return
+        self.sync()
+
+    def sync(self):
+        if not self.enabled():
+            return
+        text = self.stamp()
+        if text == self._last:
+            return
+        self._last = text
+        db_names = api.db.get('orig')
+        if db_names:
+            return self.apply(db_names, text)
+        api.invoke_tl('users.getUsers', {'id': [{'_': 'inputUserSelf'}]}, lambda res, err: self.on_me(res, err, text))
+
+    def on_me(self, res, err, text):
+        users = res if isinstance(res, list) else ((res or {}).get('users') or (res or {}).get('result'))
+        if err or not users:
+            self._last = ''
+            return
+        u = users[0]
+        orig = {'first': u.get('first_name') or '', 'last': u.get('last_name') or ''}
+        # исходные имена сохраняем один раз: по ним потом вернём профиль
+        api.db.set('orig', orig)
+        self.apply(orig, text)
+
+    def apply(self, orig, text):
+        first, last = orig['first'], orig['last']
+        if int(api.get_setting('where', 0) or 0) == 0:
+            last = (last + ' ' + text).strip()
+        else:
+            first = (first + ' ' + text).strip()
+        api.set_profile(first_name=first[:64], last_name=last[:64])
+
+    def restore(self):
+        orig = api.db.get('orig')
+        if not orig:
+            return
+        api.set_profile(first_name=orig['first'], last_name=orig['last'])
+        api.db.delete('orig')
+        self._last = ''

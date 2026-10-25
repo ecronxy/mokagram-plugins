@@ -1,0 +1,78 @@
+__id__ = "mass_edit"
+__name__ = "Массовая правка"
+__description__ = "Выделите несколько своих сообщений, нажмите правой кнопкой и выберите «Изменить выделенные»: у всех будет один новый текст. Команда .massundo вернёт прошлые тексты"
+__author__ = "mokagram"
+__version__ = "1.0.0"
+__icon__ = "✏️"
+__min_version__ = "0.1.0"
+__permissions__ = ["messages.read", "messages.edit", "ui"]
+
+from base_plugin import BasePlugin, MenuItemData, MenuItemType, command
+from mokagram_sdk import api
+
+PAUSE = 0.8      # между правками: Telegram режет частые запросы
+MAX = 50
+
+
+class MassEdit(BasePlugin):
+    def on_plugin_load(self):
+        self.busy = False
+        self.add_menu_item(MenuItemData(
+            menu_type=MenuItemType.MESSAGE_CONTEXT_MENU, text="Изменить выделенные", icon="edit",
+            condition=lambda c: len(c.get('selected_ids') or []) > 1 and bool(c.get('selected_all_out')),
+            on_click=self.ask))
+
+    def ask(self, ctx):
+        ids = [str(i) for i in ctx.get('selected_ids') or []][:MAX]
+        peer = ctx['peer']
+        api.prompt("Изменить выделенные (%d)" % len(ids), "Новый текст для всех", lambda text: self.run(peer, ids, text),
+                   multiline=True)
+
+    @command("massundo", "вернуть тексты, которые были до последней массовой правки")
+    def undo_cmd(self, ctx):
+        batch = api.db.get('last')
+        if not batch:
+            api.show_toast("Откатывать нечего")
+            return ''
+        self.go(batch['peer'], batch['items'], 'undo')
+        return ''
+
+    def run(self, peer, ids, text):
+        text = (text or '').strip()
+        if not text:
+            return api.show_toast("Пустой текст, ничего не меняю")
+        if self.busy:
+            return api.show_toast("Предыдущая правка ещё идёт")
+        items = []
+        for mid in ids:
+            m = api.get_message(peer, mid)
+            if m and m.get('out'):
+                items.append({'id': mid, 'old': m.get('text') or '', 'entities': m.get('entities') or [], 'new': text})
+        if not items:
+            return api.show_toast("Не нашёл своих сообщений среди выделенных")
+        api.db.set('last', {'peer': peer, 'items': items})
+        self.go(peer, items, 'edit')
+
+    def go(self, peer, items, mode):
+        self.busy = True
+        state = {'done': 0, 'fail': 0}
+        total = len(items)
+        dialog = api.show_dialog("Массовая правка" if mode == 'edit' else "Откат правки",
+                                 "0 из %d" % total, [{'type': 'progress', 'default': 0}],
+                                 [{'id': 'close', 'text': 'Закрыть', 'style': 'cancel'}])
+
+        def step(i):
+            if i >= total:
+                self.busy = False
+                api.update_dialog(dialog, message="Готово: %d из %d" % (state['done'], total), progress=100)
+                return
+            it = items[i]
+            if mode == 'edit':
+                ok = api.edit_message(peer, it['id'], it['new'])
+            else:
+                ok = api.edit_message(peer, it['id'], it['old'], it.get('entities'))
+            state['done' if ok else 'fail'] += 1
+            api.update_dialog(dialog, message="%d из %d" % (i + 1, total), progress=int((i + 1) * 100 / total))
+            api.set_timeout(lambda: step(i + 1), PAUSE)
+
+        step(0)

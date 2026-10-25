@@ -1,0 +1,119 @@
+__id__ = "search_by_id"
+__name__ = "Поиск по ID"
+__description__ = "Находит человека или чат по ID, номеру телефона, @username или ссылке t.me. Пункт «Найти по ID» в боковом меню и команда .find"
+__author__ = "mokagram"
+__version__ = "1.0.0"
+__icon__ = "#️⃣"
+__min_version__ = "0.1.0"
+__permissions__ = ["tl.read", "messages.read", "ui"]
+
+import re
+
+from base_plugin import BasePlugin, MenuItemData, MenuItemType, command
+from mokagram_sdk import api
+
+LINK = re.compile(r'(?:https?://)?t(?:elegram)?\.me/([A-Za-z][A-Za-z0-9_]{3,31})', re.I)
+NAME = re.compile(r'@?([A-Za-z][A-Za-z0-9_]{3,31})$')
+PHONE = re.compile(r'\+\d{7,15}$')
+NUMBER = re.compile(r'-?\d{3,20}$')
+
+
+def parse(text):
+    """Что ввели: ('username', имя) | ('phone', цифры) | ('id', число) | None."""
+    t = (text or '').strip().replace(' ', '')
+    m = LINK.search(t)
+    if m:
+        return 'username', m.group(1)
+    if PHONE.match(t):
+        return 'phone', t[1:]
+    if NUMBER.match(t):
+        return 'id', t
+    m = NAME.match(t)
+    if m:
+        return 'username', m.group(1)
+    return None
+
+
+def names_of(o):
+    found = [o.get('username')] + [n.get('username') for n in o.get('usernames') or []]
+    return [n.lower() for n in found if n]
+
+
+def title_of(u):
+    if u.get('title'):
+        return u['title']
+    return ' '.join(x for x in (u.get('first_name'), u.get('last_name')) if x) or 'без имени'
+
+
+class SearchById(BasePlugin):
+    def on_plugin_load(self):
+        self.add_menu_item(MenuItemData(menu_type=MenuItemType.DRAWER_MENU, text="Найти по ID",
+                                        icon="search", on_click=lambda c: self.ask()))
+
+    @command("find", "найти по ID, номеру, @username или ссылке: .find 123456789")
+    def find_cmd(self, ctx):
+        if ctx.args:
+            self.search(ctx.args)
+            return ''
+        self.ask()
+        return ''
+
+    def ask(self):
+        api.prompt("Поиск по ID", "ID, +телефон, @username или ссылка t.me", self.search)
+
+    def say(self, text):
+        api.log('search_by_id: ' + text)
+        api.show_toast(text)
+
+    def search(self, text):
+        kind = parse(text)
+        if not kind:
+            return self.say("Не похоже на ID, номер (с +), @username или ссылку")
+        what, value = kind
+        if what == 'username':
+            # contacts.search, а не resolveUsername: у resolve жёсткий лимит, на нём легко поймать долгий FLOOD_WAIT
+            api.invoke_tl('contacts.search', {'q': value, 'limit': 50},
+                          lambda res, err: self.on_search(res, err, value))
+        elif what == 'phone':
+            api.invoke_tl('contacts.resolvePhone', {'phone': value}, self.on_phone)
+        else:
+            self.by_id(value)
+
+    def on_search(self, res, err, name):
+        if err or not res:
+            return self.say("Поиск не удался: %s" % ((err or {}).get('description') or 'нет ответа'))
+        low = name.lower()
+        for u in res.get('users', []):
+            if low in names_of(u):
+                return self.show('user', u)
+        for c in res.get('chats', []):
+            if low in names_of(c):
+                kind = 'channel' if c.get('_') in ('channel', 'channelForbidden') else 'chat'
+                return self.show(kind, c)
+        self.say("@%s не найден" % name)
+
+    def on_phone(self, res, err):
+        users = (res or {}).get('users') or []
+        if err or not users:
+            return self.say("По этому номеру никого нет или человек скрыл номер")
+        self.show('user', users[0])
+
+    def by_id(self, value):
+        n = int(value)
+        kind, bare = 'user', abs(n)
+        if str(abs(n)).startswith('100') and n < 0:
+            kind, bare = 'channel', int(str(abs(n))[3:])
+        elif n < 0:
+            kind = 'chat'
+        peer = api.peer_id_for(kind, bare)
+        info = api.get_user_info(peer)
+        if info:
+            return self.show(kind, {'id': bare, 'title': info.get('title'), 'username': info.get('username')})
+        self.say("ID %s клиенту неизвестен: Telegram отдаёт по одному ID только тех, кто уже есть в ваших чатах и контактах" % value)
+
+    def show(self, kind, obj):
+        peer = api.peer_id_for(kind, obj['id'])
+        link = (names_of(obj) or [''])[0]
+        if not api.open_chat(peer) and link:
+            api.open_url('https://t.me/' + link)
+        self.say("Нашёл: %s" % title_of(obj))
