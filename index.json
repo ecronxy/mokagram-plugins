@@ -6,6 +6,7 @@
       "description": "Пишешь ;shrug, ;lenny или ;tableflip в конце текста, и он заменится на смайл из символов",
       "author": "ecronx",
       "version": "1.0.0",
+      "icon": "🤷",
       "permissions": [
         "messages.send"
       ],
@@ -19,6 +20,7 @@
       "description": ".roll 20 бросает кубик, .pick чай | кофе | сок выбирает случайное",
       "author": "ecronx",
       "version": "1.0.0",
+      "icon": "🎲",
       "permissions": [
         "messages.send"
       ],
@@ -32,6 +34,7 @@
       "description": ".up .low .rev .mock: пишешь команду и текст, уходит уже преобразованное",
       "author": "ecronx",
       "version": "1.0.0",
+      "icon": "🔤",
       "permissions": [
         "messages.send"
       ],

@@ -16,7 +16,7 @@ for path in sorted(glob.glob("plugins/*.plugin")):
     out.append({
         "id": field("id"), "name": field("name"),
         "description": field("description"), "author": field("author"),
-        "version": field("version"), "permissions": field("permissions") or [],
+        "version": field("version"), "icon": field("icon"), "permissions": field("permissions") or [],
         "file": os.path.basename(path),
         "sha256": hashlib.sha256(data).hexdigest(), "size": len(data),
     })
