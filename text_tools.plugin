@@ -1,0 +1,32 @@
+__id__ = "text_tools"
+__name__ = "Текстовые команды"
+__description__ = ".up .low .rev .mock: пишешь команду и текст, уходит уже преобразованное"
+__author__ = "ecronx"
+__version__ = "1.0.0"
+__icon__ = "🔤"
+__min_version__ = "0.1.0"
+__permissions__ = ["messages.send"]
+
+from mokagram_sdk.base_plugin import BasePlugin, HookResult, HookStrategy
+
+
+def _mock(text):
+    return "".join(c.upper() if i % 2 else c.lower() for i, c in enumerate(text))
+
+
+COMMANDS = {
+    ".up ": str.upper,
+    ".low ": str.lower,
+    ".rev ": lambda s: s[::-1],
+    ".mock ": _mock,
+}
+
+
+class TextTools(BasePlugin):
+    def send_message_hook(self, params):
+        text = params.get("text", "")
+        for prefix, func in COMMANDS.items():
+            if text.lower().startswith(prefix) and text[len(prefix):].strip():
+                params["text"] = func(text[len(prefix):].strip())
+                return HookResult(HookStrategy.MODIFY, params)
+        return HookResult()

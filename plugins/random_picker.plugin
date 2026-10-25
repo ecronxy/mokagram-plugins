@@ -1,0 +1,29 @@
+__id__ = "random_picker"
+__name__ = "Жребий"
+__description__ = ".roll 20 бросает кубик, .pick чай | кофе | сок выбирает случайное"
+__author__ = "ecronx"
+__version__ = "1.0.0"
+__icon__ = "🎲"
+__min_version__ = "0.1.0"
+__permissions__ = ["messages.send"]
+
+import random
+
+from mokagram_sdk.base_plugin import BasePlugin, HookResult, HookStrategy
+
+
+class Picker(BasePlugin):
+    def send_message_hook(self, params):
+        text = params.get("text", "").strip()
+        lower = text.lower()
+        if lower.startswith(".roll"):
+            arg = text[5:].strip()
+            top = int(arg) if arg.isdigit() and 1 < int(arg) <= 1000000 else 6
+            params["text"] = "🎲 %d из %d" % (random.randint(1, top), top)
+            return HookResult(HookStrategy.MODIFY, params)
+        if lower.startswith(".pick ") and "|" in text:
+            options = [o.strip() for o in text[6:].split("|") if o.strip()]
+            if len(options) > 1:
+                params["text"] = "🎯 " + random.choice(options)
+                return HookResult(HookStrategy.MODIFY, params)
+        return HookResult()

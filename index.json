@@ -1,0 +1,43 @@
+{
+  "plugins": [
+    {
+      "id": "quick_phrases",
+      "name": "Быстрые фразы",
+      "description": "Пишешь ;shrug, ;lenny или ;tableflip в конце текста, и он заменится на смайл из символов",
+      "author": "ecronx",
+      "version": "1.0.0",
+      "permissions": [
+        "messages.send"
+      ],
+      "file": "quick_phrases.plugin",
+      "sha256": "95840504e2e1a7161f1772d9cba9b1249edc9c7f69399736bbc5314b7cdfcc6c",
+      "size": 955
+    },
+    {
+      "id": "random_picker",
+      "name": "Жребий",
+      "description": ".roll 20 бросает кубик, .pick чай | кофе | сок выбирает случайное",
+      "author": "ecronx",
+      "version": "1.0.0",
+      "permissions": [
+        "messages.send"
+      ],
+      "file": "random_picker.plugin",
+      "sha256": "bd7cf78751233d4d7e4b1799db0544f6073ca0ccbde05b2b8af0109ec891c177",
+      "size": 1145
+    },
+    {
+      "id": "text_tools",
+      "name": "Текстовые команды",
+      "description": ".up .low .rev .mock: пишешь команду и текст, уходит уже преобразованное",
+      "author": "ecronx",
+      "version": "1.0.0",
+      "permissions": [
+        "messages.send"
+      ],
+      "file": "text_tools.plugin",
+      "sha256": "f7fd2a1236fe60c269d2f507e098ee9473535a301ad3159b7ba6e7f0ffdae0c5",
+      "size": 1013
+    }
+  ]
+}

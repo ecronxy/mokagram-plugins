@@ -1,0 +1,29 @@
+__id__ = "quick_phrases"
+__name__ = "Быстрые фразы"
+__description__ = "Пишешь ;shrug, ;lenny или ;tableflip в конце текста, и он заменится на смайл из символов"
+__author__ = "ecronx"
+__version__ = "1.0.0"
+__icon__ = "🤷"
+__min_version__ = "0.1.0"
+__permissions__ = ["messages.send"]
+
+from mokagram_sdk.base_plugin import BasePlugin, HookResult, HookStrategy
+
+PHRASES = {
+    ";shrug": "¯\\_(ツ)_/¯",
+    ";lenny": "( ͡° ͜ʖ ͡°)",
+    ";tableflip": "(╯°□°)╯︵ ┻━┻",
+    ";unflip": "┬─┬ ノ( ゜-゜ノ)",
+}
+
+
+class Phrases(BasePlugin):
+    def send_message_hook(self, params):
+        text = params.get("text", "")
+        new = text
+        for key, value in PHRASES.items():
+            new = new.replace(key, value)
+        if new != text:
+            params["text"] = new
+            return HookResult(HookStrategy.MODIFY, params)
+        return HookResult()
