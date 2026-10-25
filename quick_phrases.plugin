@@ -1,6 +1,7 @@
 __id__ = "quick_phrases"
 __name__ = "Быстрые фразы"
 __description__ = "Пишешь ;shrug, ;lenny или ;tableflip в конце текста, и он заменится на смайл из символов"
+__details__ = 'Пишете ;shrug, ;lenny или ;tableflip в конце сообщения, и оно заменяется на смайл из символов.\nПрава: messages.send (менять текст исходящего сообщения до отправки).'
 __author__ = "ecronx"
 __version__ = "1.0.0"
 __icon__ = "🤷"

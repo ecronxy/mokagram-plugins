@@ -17,7 +17,7 @@ for path in sorted(glob.glob("plugins/*.plugin")):
         return eval(m.group(1), {}) if m else ""
     out.append({
         "id": field("id"), "name": field("name"),
-        "description": field("description"), "author": field("author"),
+        "description": field("description"), "details": field("details"), "author": field("author"),
         "version": field("version"), "icon": field("icon"), "permissions": field("permissions") or [],
         "file": os.path.basename(path),
         "sha256": hashlib.sha256(data).hexdigest(), "size": len(data),

@@ -1,8 +1,9 @@
 __id__ = "time_in_name"
 __name__ = "Время в имени"
 __description__ = "Добавляет к вашему имени или фамилии текущее время: «Иван 🕓 14:35». Выключите переключатель, и имя вернётся"
+__details__ = 'Что делает: добавляет к фамилии (или имени) текущее время, например «ecronx 🕓 14:35». Это видят все, кто смотрит ваш профиль.\nНастройки: куда добавлять, вид времени (%H:%M), часовой пояс (пусто означает как в системе), как часто обновлять (от 1 до 60 минут). Если выключить плагин или переключатель «Включить», имя вернётся прежним.\nПредупреждение: частая смена имени может упереться в ограничения Telegram, поэтому по умолчанию обновляется раз в 5 минут.\nПрава: profile.write (менять ваш профиль), tl.read (прочитать исходное имя), background (раз в минуту сверять время), settings (свои настройки).'
 __author__ = "mokagram"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __icon__ = "🕓"
 __min_version__ = "0.1.0"
 __permissions__ = ["profile.write", "tl.read", "background", "settings"]
@@ -19,7 +20,7 @@ class TimeInName(BasePlugin):
     def create_settings(self):
         return [
             Header("Время в имени"),
-            Switch(key="enabled", text="Включить", default=False,
+            Switch(key="enabled", text="Включить", default=True,
                    subtext="Меняет имя в вашем профиле, его увидят все"),
             Selector(key="where", text="Куда добавлять", items=["В фамилию", "В имя"], default=0),
             Input(key="format", text="Вид времени", default="🕓 %H:%M",
@@ -54,7 +55,7 @@ class TimeInName(BasePlugin):
             self.sync()
 
     def enabled(self):
-        return bool(api.get_setting('enabled', False))
+        return bool(api.get_setting('enabled', True))
 
     def stamp(self):
         fmt = api.get_setting('format', '🕓 %H:%M') or '🕓 %H:%M'
